@@ -7,15 +7,17 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "nodemon --exec electron . --watch ./ --ext .js,.html,.vue,.css",
+    "start": "nodemon --exec \"chcp 65001 && electron\" . --watch ./ --ext .js,.html,.vue,.css",
     "elec-build": "electron-builder"
   },
   "dependencies": {
     "axios": "^1.6.8",
     "element-plus": "^2.7.2",
+    "fs-extra": "^11.2.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
-    "vue-router": "^4.3.0"
+    "vue-router": "^4.3.0",
+    "zip-folder": "^1.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",

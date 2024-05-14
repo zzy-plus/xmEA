@@ -1,5 +1,6 @@
 const {app, BrowserWindow, ipcMain, Menu, dialog} = require('electron')
 const path = require('path')
+const {getUserDoc, getProfiles, hex2Text, zipFile} = require("./service") ;
 
 
 const env = app.isPackaged? '': 'dev'
@@ -33,7 +34,7 @@ const createWindow = () => {
 
 app.whenReady().then(async () => {
     createWindow()
-
+    zipFile('E:\\Desktop\\tmpsearch', 'E:\\Desktop\\tmpsearch.zip')
 })
 
 app.on('window-all-closed', () => {
