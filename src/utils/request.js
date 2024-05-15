@@ -1,5 +1,9 @@
 import axios from "axios";
-import {baseUrl} from "@/config";
+
+
+//const baseUrl = 'http://localhost:8080'
+const baseUrl = 'http://10.7.62.164:8080'
+
 
 const request = axios.create({
     timeout: 1000
@@ -7,7 +11,7 @@ const request = axios.create({
 
 // 请求拦截器
 request.interceptors.request.use(config => {
-    if (process.env.NODE_ENV === 'production' && config.url.startsWith('/api')) {
+    if (process.env.NODE_ENV === 'production' && config.url.startsWith('/api')) {   //打包后生效
         config.url = baseUrl + config.url.replace(/^\/api/,'');
     }
     return config;

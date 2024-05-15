@@ -4,8 +4,12 @@ const path =require('path')
 const zipFolder = require('zip-folder')
 const fsx = require('fs-extra')
 const axios = require('axios')
+const request = require('request');
 
 
+
+//const baseUrl = 'http://localhost:8080'
+const baseUrl = 'http://10.7.62.164:8080'
 
 
 
@@ -22,14 +26,17 @@ const hex2Text = (hex)=>{
 }
 
 const getProfiles = ()=>{
-    const profilePath = getUserDoc() + '\\Euro Truck Simulator 2\\profiles'
-    const files = fs.readdirSync(profilePath)
+    const profilesPath = getUserDoc() + '\\Euro Truck Simulator 2\\profiles'
+    const files = fs.readdirSync(profilesPath)
     const profiles = []
     for (const file of files) {
-        const filePath = path.join(profilePath, file)
+        const filePath = path.join(profilesPath, file)
         const stat = fs.statSync(filePath)
         if(stat.isDirectory()){
-            profiles.push(hex2Text(file))
+            profiles.push({
+                name: file,
+                cname: hex2Text(file)
+            })
         }
     }
     return profiles
@@ -54,16 +61,43 @@ const zipFile = (filePath, zipPath)=>{
                 console.log('文件夹成功打包到:', zipPath);
             }
             fsx.emptyDirSync(tempDir)
-            resolve(0)
+            resolve(true)
         });
     })
 }
 
+
+const uploadProfile = async (profileName)=>{
+    const profilesPath = getUserDoc() + '\\Euro Truck Simulator 2\\profiles'
+    const profilePath = profilesPath + `\\${profileName}`
+    const zipPath = profilesPath + `\\${profileName}.zip`
+    //压缩
+    const result = await zipFile(profilePath, zipPath)
+    console.log(typeof (result))
+    if(!result) return
+
+    //上传 todo file==null
+    const file = fs.createReadStream(zipPath, {encoding: 'binary'})
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const resp = await axios.post(baseUrl + '/common/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        }
+    })
+
+    console.log(resp.data)
+
+
+
+}
 
 
 module.exports = {
     getUserDoc,
     getProfiles,
     hex2Text,
-    zipFile
+    zipFile,
+    uploadProfile
 }
