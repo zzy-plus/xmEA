@@ -4,7 +4,8 @@ const path =require('path')
 const zipFolder = require('zip-folder')
 const fsx = require('fs-extra')
 const axios = require('axios')
-const request = require('request');
+const request = require('request')
+const FormData = require('form-data');
 
 
 
@@ -51,17 +52,32 @@ const zipFile = (filePath, zipPath)=>{
         }
 
         //复制目录
-        fsx.copySync(filePath, path.join(tempDir, path.basename(filePath)));
+        const tempFilePath = path.join(tempDir, path.basename(filePath))
+        fsx.copySync(filePath, tempFilePath)
+
+        //删除不必要的文件
+        const tempSavePath = tempFilePath + '\\save'
+        const saves = fs.readdirSync(tempSavePath)
+        if(!saves.includes('quicksave')){
+            resolve(false)
+            return
+        }
+        for (const save of saves) {
+            if(save === 'quicksave') continue
+            fs.rmSync(tempSavePath + `\\${save}`, { recursive: true })
+        }
 
         //压缩文件
         zipFolder(tempDir, zipPath, function(err) {
             if (err) {
                 console.log('打包文件夹失败:', err);
+                resolve(false)
             } else {
                 console.log('文件夹成功打包到:', zipPath);
+                //清空临时文件夹
+                fsx.emptyDirSync(tempDir)
+                resolve(true)
             }
-            fsx.emptyDirSync(tempDir)
-            resolve(true)
         });
     })
 }
@@ -73,24 +89,49 @@ const uploadProfile = async (profileName)=>{
     const zipPath = profilesPath + `\\${profileName}.zip`
     //压缩
     const result = await zipFile(profilePath, zipPath)
-    console.log(typeof (result))
-    if(!result) return
+    if(result){
+        //上传
+        const file = fs.createReadStream(zipPath)
+        const formData = new FormData()
+        formData.append('file', file)
 
-    //上传 todo file==null
-    const file = fs.createReadStream(zipPath, {encoding: 'binary'})
-    const formData = new FormData()
-    formData.append('file', file)
+        const resp = await axios.post(baseUrl + '/common/upload',
+            formData, {
+                headers: {'Content-Type': 'multipart/form-data'}
+            })
+        console.log(resp.data)
+    }
+    //删除压缩包
+    if(fs.existsSync(zipPath)){
+        fs.rmSync(zipPath)
+        console.log(`删除${profileName}.zip`)
+    }
+    return result
+}
 
-    const resp = await axios.post(baseUrl + '/common/upload', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
+const getLocation = (profileName)=>{
+    const profilesPath = getUserDoc() + '\\Euro Truck Simulator 2\\profiles'
+    const gameSiiPath = `${profilesPath}\\${profileName}\\save\\quicksave\\game.sii`    //默认读取quicksave中的数据
+    if(!fs.existsSync(gameSiiPath)) {
+        return {'truck': '未找到', 'trailer': '未找到'}
+    }
+
+    try {
+        execSync(`./resources/SII_Decrypt \"${gameSiiPath}\"`)
+    }catch (e) { }
+
+    const lines = fs.readFileSync(gameSiiPath, 'utf8').split('\r\n')
+
+    const data = {}
+    for (const line of lines) {
+        if(line.trim().startsWith('truck_placement')){
+            data['truck'] = line.trim()
+        }else if(line.trim().startsWith('trailer_placement')){
+            data['trailer'] = line.trim()
+            break
         }
-    })
-
-    console.log(resp.data)
-
-
-
+    }
+    return data
 }
 
 
@@ -99,5 +140,6 @@ module.exports = {
     getProfiles,
     hex2Text,
     zipFile,
-    uploadProfile
+    uploadProfile,
+    getLocation
 }
