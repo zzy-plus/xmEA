@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "nodemon --exec \"chcp 65001 && electron\" . --watch ./ --ext .js,.html,.vue,.css",
+    "start": "nodemon --exec \"chcp 65001 && electron .\" --watch ./ --ext .js,.html,.vue,.css",
     "elec-build": "electron-builder"
   },
   "dependencies": {
@@ -58,7 +58,8 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "resources/favicon.ico"
     },
     "nsis": {
       "oneClick": false,

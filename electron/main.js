@@ -10,12 +10,12 @@ const env = app.isPackaged? '': 'dev'
 let win
 const createWindow = () => {
     win = new BrowserWindow({
-        width: 1200, //800
-        height: 700,
+        width: 901, //901
+        height: 693,
         backgroundColor: '#ffffff',
         resizable: false,
         //icon: path.resolve(__dirname, '../src/assets/favicon_m.ico'), // 指定图标路径
-        //icon: './assets/favicon_m.ico',
+        icon: 'resources/icon_m.png',
         webPreferences: {
             preload: path.resolve(__dirname, 'preload.js'),
             sandbox: false
@@ -41,6 +41,8 @@ app.whenReady().then(async () => {
     //uploadProfile('584DE59BBDE5BA86E6B4BBE58AA8E6A1A3')
 
     //console.log(getLocation('584DE59BBDE5BA86E6B4BBE58AA8E6A1A3'))
+
+    zipFile('C:\\Users\\15226\\Documents\\Euro Truck Simulator 2\\profiles\\584DE59BBDE5BA86E6B4BBE58AA8E6A1A3', './resources/1.zip')
 })
 
 app.on('window-all-closed', () => {
@@ -62,6 +64,20 @@ ipcMain.handle('event_upload_profile', (__, profileName)=>{
         }else {
             resolve(R.error('存档上传失败'))
         }
+    })
+})
+
+
+ipcMain.handle('event_get_location', (__, profileName)=>{
+
+    return new Promise((resolve, reject)=>{
+        const data = getLocation(profileName)
+        if(data){
+            resolve(R.success(data))
+        }else {
+            resolve(R.error('获取坐标失败'))
+        }
+
     })
 })
 

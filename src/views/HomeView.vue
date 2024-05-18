@@ -24,6 +24,7 @@ const handleUploadProfile = async()=>{
   const result = await ipc.invoke('event_upload_profile', selectedProfile.value)
   if(result.code === 1){
     Msg.error(result.msg)
+    return
   }
 
   const resp = await request.post('/api/profile', {
@@ -116,8 +117,30 @@ const handleDeleteProfile = async (index, row)=>{
 }
 
 
+const editMidwayVisible = ref(false)
 const handleEditMidway = (row)=>{
-  console.log(row)
+  midway_id.value = row.id
+  truckPlace.value = row.truckPlace
+  trailerPlace.value = row.trailerPlace
+  placeName.value = row.placeName
+  midwaySort.value = row.sort
+  editMidwayVisible.value = true
+}
+
+const editMidwayConfrim = async ()=>{
+  const resp = await request.put('/api/midway',{
+    id: midway_id.value,
+    placeName: placeName.value,
+    sort: Number(midwaySort.value)
+  })
+  if(resp.data.code === 0){
+    Msg.success(resp.data.data)
+  }else {
+    Msg.error(resp.data.msg)
+  }
+  editMidwayVisible.value = false
+
+  getTableData()
 }
 
 const handleDeleteMidway = async (row)=>{
@@ -130,11 +153,48 @@ const handleDeleteMidway = async (row)=>{
   getTableData()
 }
 
-const handleAddMidway = (profile)=>{
-  console.log(profile)
-  const profileId = profile.id
-  const profileName = profile.name
+const midway_id = ref()
+const profileId = ref()
+const placeName = ref()
+const midwaySort = ref()
+const midwayAddVisible = ref(false)
+const truckPlace = ref()
+const trailerPlace = ref()
 
+const handleAddMidway = async (profile)=>{
+
+  profileId.value = profile.id
+  const profileName = profile.name
+  const resp = await ipc.invoke('event_get_location', profileName)
+
+  if(resp.code === 0){
+    truckPlace.value = resp.data.truck
+    trailerPlace.value = resp.data.trailer
+    midwayAddVisible.value = true
+  }else {
+    Msg.error(resp.msg)
+  }
+}
+
+const addMidwayConfrim = async ()=>{
+  if(!(profileId && placeName && truckPlace && trailerPlace && midwaySort)) return
+  const result = await request.post('/api/midway', {
+    profileId: profileId.value,
+    placeName: placeName.value,
+    truckPlace: truckPlace.value,
+    trailerPlace: trailerPlace.value,
+    sort: Number(midwaySort.value)
+  })
+
+  if(result.data.code === 0){
+    Msg.success(result.data.data)
+  }else {
+    Msg.error(result.data.msg)
+  }
+
+  midwayAddVisible.value = false
+
+  getTableData()
 }
 
 
@@ -143,7 +203,7 @@ const handleAddMidway = (profile)=>{
 
 <template>
 
-  <div style="border: #ffb92e 2px solid; height: 125px; width: 470px; padding: 5px; margin: 5px;">
+  <div style="height: 125px; width: 470px; padding: 5px; margin: 5px;">
 
     <div style="display: flex; flex-direction: row; align-items: center; padding: 3px">
       <div>本地存档：</div>
@@ -173,16 +233,18 @@ const handleAddMidway = (profile)=>{
 
 
 
-  <el-table :data="tableData" style="width: 900px; height: 490px;"
-            :style="{'--el-table-tr-bg-color': 'rgba(103,197,255,0.16)'}">
+  <el-table :data="tableData" style="width: 900px; height: 490px; background-image: url('resources/1.jpg');
+             background-repeat: no-repeat; background-size: cover"
+            :style="{'--el-table-tr-bg-color': 'rgba(103,197,255,0.16)', boxShadow: 'var(--el-box-shadow-light)'}">
     <!-- 内层内容 -->
     <el-table-column type="expand" align="center">
       <template #default="props">
         <div style="padding: 10px">
-          <div style="margin-bottom: 10px; font-weight: bold">存档名称：{{props.row.cname}}</div>
+          <div style="margin-bottom: 10px; font-weight: bold">存档名称：{{props.row.cname}}&nbsp;&nbsp;
+            [{{props.row.name.length>40? props.row.name.substring(0,41)+'...': props.row.name}}]</div>
           <div>存档说明：{{props.row.note}}</div>
         </div>
-        <el-table :data="props.row.midways" >
+        <el-table :data="props.row.midways" border>
           <el-table-column width="140" align="center">
             <template #header>
               <el-button type="primary" @click="handleAddMidway(props.row)" size="small" style="width: 107px;">添加中途点</el-button>
@@ -227,18 +289,43 @@ const handleAddMidway = (profile)=>{
   </el-table>
 
 
+  <!-- dialogs -->
 
   <el-dialog title="" width="400" v-model="profileEditVisible">
     <div style="margin: 10px">活动时间：<el-input v-model="profile.eventTime" style="width: 250px"/></div>
     <div style="margin: 10px">活动名称：<el-input v-model="profile.eventName" style="width: 250px"/></div>
     <div style="margin: 10px">存档说明：<el-input v-model="profile.note" style="width: 250px"/></div>
     <template #footer>
-      <div class="dialog-footer">
-        <el-button @click="profileEditVisible=false">取消</el-button>
-        <el-button type="primary" @click="editProfileConfirm">
-          确认
-        </el-button>
-      </div>
+      <el-button @click="profileEditVisible=false">取消</el-button>
+      <el-button type="primary" @click="editProfileConfirm">
+        确认
+      </el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog title="添加中途点" width="800" v-model="midwayAddVisible">
+    <div style="margin: 10px">{{truckPlace}}</div>
+    <div style="margin: 10px">{{trailerPlace}}</div>
+    <div style="margin: 10px">中途点名称：<el-input v-model="placeName" style="width: 250px"/></div>
+    <div style="margin: 10px">坐标序号：<el-input v-model="midwaySort" style="width: 50px"/></div>
+    <template #footer>
+      <el-button @click="midwayAddVisible=false">取消</el-button>
+      <el-button type="primary" @click="addMidwayConfrim">
+        确认
+      </el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog title="编辑中途点" width="800" v-model="editMidwayVisible">
+    <div style="margin: 10px">{{truckPlace}}</div>
+    <div style="margin: 10px">{{trailerPlace}}</div>
+    <div style="margin: 10px">中途点名称：<el-input v-model="placeName" style="width: 250px"/></div>
+    <div style="margin: 10px">坐标序号：<el-input v-model="midwaySort" style="width: 50px"/></div>
+    <template #footer>
+      <el-button @click="editMidwayVisible=false">取消</el-button>
+      <el-button type="primary" @click="editMidwayConfrim">
+        确认
+      </el-button>
     </template>
   </el-dialog>
 

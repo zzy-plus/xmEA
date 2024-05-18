@@ -9,10 +9,10 @@ const FormData = require('form-data');
 
 
 
-//const baseUrl = 'http://localhost:8080'
-const baseUrl = 'http://10.7.62.164:8080'
+const baseUrl = 'http://errorserver.top:5005'
+//const baseUrl = 'http://10.7.62.164:8080'
 
-
+ 
 
 const getUserDoc = ()=>{
     const output = execSync('reg query \"HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders\" /v Personal | findstr Personal')
@@ -43,6 +43,62 @@ const getProfiles = ()=>{
     return profiles
 }
 
+
+const processSave = (tempFilePath)=>{
+    //修改profile.sii
+    const tempProfileSiiPath = tempFilePath + '\\profile.sii'
+    const tempProfileBakSiiPath = tempFilePath + '\\profile.bak.sii'
+    try {
+        execSync(`resources\\SII_Decrypt \"${tempProfileSiiPath}\"`)
+    }catch (e) { }
+    const content = fs.readFileSync(tempProfileSiiPath, 'utf8')
+    const lines = content.split('\r\n')
+    const newLines = []
+    const pattern = /cached_discovery\[([0-9]+)]/
+    for (const line of lines) {
+        if(line.trim().startsWith('cached_discovery:')){
+            newLines.push(' cached_discovery: 200')
+        }else if(line.trim().startsWith('cached_discovery[')){
+            const result = pattern.exec(line)
+            if(Number(result[1]) < 200){
+                newLines.push(line)
+            }
+        }else {
+            newLines.push(line)
+        }
+    }
+    fs.writeFileSync(tempProfileSiiPath, newLines.join('\r\n'), 'utf8')
+
+    //直接删了 哈哈
+    if(fs.existsSync(tempProfileBakSiiPath)){
+        fs.rmSync(tempProfileBakSiiPath)
+    }
+
+    //修改info.sii
+    const infoSiiPath = tempFilePath + '\\save\\quicksave\\info.sii'
+    try {
+        execSync(`resources\\SII_Decrypt \"${infoSiiPath}\"`)
+    }catch (e) { }
+    const content2 = fs.readFileSync(infoSiiPath, 'utf8')
+    const lines2 = content2.split('\r\n')
+    const newLines2 = []
+    for (const line of lines2) {
+        if(line.trim().startsWith('dependencies:')){
+            newLines2.push(' dependencies: 4')
+            newLines2.push(' dependencies[0]: "dlc|eut2_daf_21|DLC - DAF 2021"')
+            newLines2.push(' dependencies[1]: "dlc|eut2_daf_xd|DLC - DAF XD"')
+            newLines2.push(' dependencies[2]: "dlc|eut2_man_tgx|DLC - MAN TGX 2020"')
+            newLines2.push(' dependencies[3]: "rdlc|eut2_rocket_league|DLC - Rocket League"')
+        }else if(line.trim().startsWith('dependencies[')){
+            continue
+        }else {
+            newLines2.push(line)
+        }
+    }
+    fs.writeFileSync(infoSiiPath, newLines2.join('\r\n'), 'utf8')
+
+}
+
 const zipFile = (filePath, zipPath)=>{
 
     return new Promise((resolve,reject)=>{
@@ -60,12 +116,15 @@ const zipFile = (filePath, zipPath)=>{
         const saves = fs.readdirSync(tempSavePath)
         if(!saves.includes('quicksave')){
             resolve(false)
+            console.log('没有quicksave文件夹！')
             return
         }
         for (const save of saves) {
             if(save === 'quicksave') continue
             fs.rmSync(tempSavePath + `\\${save}`, { recursive: true })
         }
+
+        processSave(tempFilePath)
 
         //压缩文件
         zipFolder(tempDir, zipPath, function(err) {
@@ -113,11 +172,14 @@ const getLocation = (profileName)=>{
     const profilesPath = getUserDoc() + '\\Euro Truck Simulator 2\\profiles'
     const gameSiiPath = `${profilesPath}\\${profileName}\\save\\quicksave\\game.sii`    //默认读取quicksave中的数据
     if(!fs.existsSync(gameSiiPath)) {
-        return {'truck': '未找到', 'trailer': '未找到'}
+        console.log(`${gameSiiPath}不存在！`)
+        return undefined
     }
 
+    console.log(gameSiiPath)
+
     try {
-        execSync(`./resources/SII_Decrypt \"${gameSiiPath}\"`)
+        execSync(`resources\\SII_Decrypt \"${gameSiiPath}\"`)
     }catch (e) { }
 
     const lines = fs.readFileSync(gameSiiPath, 'utf8').split('\r\n')
