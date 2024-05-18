@@ -42,7 +42,7 @@ app.whenReady().then(async () => {
 
     //console.log(getLocation('584DE59BBDE5BA86E6B4BBE58AA8E6A1A3'))
 
-    zipFile('C:\\Users\\15226\\Documents\\Euro Truck Simulator 2\\profiles\\584DE59BBDE5BA86E6B4BBE58AA8E6A1A3', './resources/1.zip')
+    //zipFile('C:\\Users\\15226\\Documents\\Euro Truck Simulator 2\\profiles\\584DE59BBDE5BA86E6B4BBE58AA8E6A1A3', './resources/1.zip')
 })
 
 app.on('window-all-closed', () => {
